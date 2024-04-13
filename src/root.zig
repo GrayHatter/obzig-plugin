@@ -1,4 +1,6 @@
 const std = @import("std");
+const sway_ipc = @import("sway-ipc.zig");
+const gui = @import("gui.zig");
 
 pub const obs = @cImport({
     @cInclude("obs/util/base.h");
@@ -34,6 +36,28 @@ export fn obs_module_name() [*:0]const u8 {
 export fn obs_module_description() [*:0]const u8 {
     return "it does stuff";
 }
+
+export fn obs_module_load() bool {
+    obs.blog(obs.LOG_INFO, "plugin loaded successfully (version %s)", PLUGIN_VERSION);
+    //gui.init();
+
+    enumScene();
+    return true;
+}
+
+fn enumScene() void {
+    obs.obs_enum_scenes(enumSceneCb, null);
+}
+
+fn enumSceneCb(_: ?*anyopaque, _: ?*obs.obs_source_t) callconv(.C) bool {
+    //const char: [*:0]u8 = scene.?.get_name(data);
+
+    //obs.blog(obs.LOG_INFO, "plugin data (found scene %s)", char);
+    return true;
+}
+
+fn enumSceneItemCb(_: ?*obs.obs_scene_t, _: ?*obs.obs_sceneitem_t, _: ?*void) callconv(.C) void {}
+
 // TODO
 // thread
 // socket
