@@ -1,4 +1,6 @@
 const std = @import("std");
+const Allocator = std.mem.Allocator;
+
 const sway_ipc = @import("sway-ipc.zig");
 const gui = @import("gui.zig");
 
@@ -37,12 +39,58 @@ export fn obs_module_description() [*:0]const u8 {
     return "it does stuff";
 }
 
+fn logFmt(comptime text: []const u8, vars: anytype) void {
+    var buf: [0xffff:0]u8 = undefined;
+
+    const txt = std.fmt.bufPrintZ(&buf, text, vars) catch unreachable;
+    log(txt);
+}
+
+fn log(text: [*:0]const u8) void {
+    obs.blog(obs.LOG_INFO, text);
+}
+
+var arena: std.heap.ArenaAllocator = undefined;
+var alloc: Allocator = undefined;
+
+fn thread(_: ?*anyopaque) void {
+    obs.blog(obs.LOG_INFO, "sway thread running");
+    var sway = sway_ipc.Connection.init(alloc) catch |err| {
+        logFmt("connection error {}", .{err});
+        return;
+    };
+    sway.subscribe() catch {
+        log("crash trying to subscribe");
+        unreachable;
+    };
+    std.time.sleep(10_000_000_000);
+    for (0..10) |_| {
+        const msg = sway.loop() catch {
+            log("unexpected read error");
+            unreachable;
+        };
+        const text = alloc.dupeZ(u8, msg.data) catch unreachable;
+        defer alloc.free(text);
+        log(text);
+        std.time.sleep(10_000_000);
+    }
+}
+
+var threads: [1]std.Thread = undefined;
+
 export fn obs_module_load() bool {
-    obs.blog(obs.LOG_INFO, "plugin loaded successfully (version %s)", PLUGIN_VERSION);
-    //gui.init();
+    arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    alloc = arena.allocator();
+    threads[0] = std.Thread.spawn(.{}, thread, .{null}) catch unreachable;
 
     enumScene();
+    logFmt("sway-focus plugin loaded successfully {s}", .{PLUGIN_VERSION});
     return true;
+}
+
+export fn obs_module_unload() void {
+    std.Thread.join(threads[0]);
+    arena.deinit();
 }
 
 fn enumScene() void {
@@ -59,12 +107,7 @@ fn enumSceneCb(_: ?*anyopaque, _: ?*obs.obs_source_t) callconv(.C) bool {
 fn enumSceneItemCb(_: ?*obs.obs_scene_t, _: ?*obs.obs_sceneitem_t, _: ?*void) callconv(.C) void {}
 
 // TODO
-// thread
-// socket
-// send message
-// get messages
 // get windows
-// poll socket
 // trigger scene on event
 // stall on remove for min seconds
 

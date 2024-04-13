@@ -1,4 +1,7 @@
-pub const Payload = enum(i32) {
+const std = @import("std");
+const Allocator = std.mem.Allocator;
+
+pub const Payload = enum(u32) {
     RUN_COMMAND = 0, // Runs the payload as sway commands
     GET_WORKSPACES = 1, // Get the list of current workspaces
     SUBSCRIBE = 2, // Subscribe the IPC connection to the events listed in the payload
@@ -14,22 +17,135 @@ pub const Payload = enum(i32) {
     GET_BINDING_STATE = 12, // Request the current binding state, e.g. the currently active binding mode name.
     GET_INPUTS = 100, // Get the list of input devices
     GET_SEATS = 101, // Get the list of seats
+    //
+    pub fn fromInt(i: u32) Payload {
+        _ = i;
+        return .RUN_COMMAND;
+    }
 };
 
-pub const Message = packed struct {
-    magic: [6]u8 = "i3-ipc",
-    length: i32,
-    payload_type: Payload,
+const Subscribe = Message{
+    .header = .{
+        .length = 13,
+        .payload_type = .SUBSCRIBE,
+    },
+    .data = "[\"workspace\"]",
 };
+
+pub const Message = struct {
+    pub const Header = struct {
+        magic: []const u8 = "i3-ipc",
+        length: u32 = 0,
+        payload_type: Payload = undefined,
+    };
+    header: Header = .{},
+    data: []const u8,
+
+    pub fn raze(m: Message, a: Allocator) void {
+        a.free(m.data);
+    }
+
+    pub fn read(a: Allocator, r: *std.net.Stream.Reader) !Message {
+        var m = Message{ .data = undefined };
+        try r.skipBytes(6, .{});
+        m.header = .{
+            .length = try r.readInt(u32, .little),
+            .payload_type = Payload.fromInt(try r.readInt(u32, .little)),
+        };
+        // TODO specify a better max size
+        if (m.header.length == 0 or m.header.length > 0x2ffff) unreachable;
+        m.data = try a.alloc(u8, m.header.length);
+        const rlen = try r.read(@constCast(m.data));
+        std.debug.assert(rlen == m.data.len);
+        return m;
+    }
+
+    pub fn send(m: Message, w: *std.net.Stream.Writer) !void {
+        std.debug.assert(m.header.length == m.data.len);
+        try w.writeAll(m.header.magic);
+        try w.writeInt(u32, m.header.length, .little);
+        try w.writeInt(u32, @intFromEnum(m.header.payload_type), .little);
+        try w.writeAll(m.data);
+    }
+};
+
+pub fn getSockPath(a: Allocator) ![]const u8 {
+    var child = std.ChildProcess.init(&[_][]const u8{ "sway", "--get-socketpath" }, a);
+    child.stdout_behavior = .Pipe;
+    child.stderr_behavior = .Pipe;
+
+    var stdout = std.ArrayList(u8).init(a);
+    var stderr = std.ArrayList(u8).init(a);
+    defer stdout.clearAndFree();
+
+    try child.spawn();
+    try child.collectOutput(&stdout, &stderr, 0xff);
+    _ = try child.wait();
+
+    _ = stdout.pop();
+    return try stdout.toOwnedSlice();
+}
 
 pub const Connection = struct {
-    socket: []const u8,
+    alloc: Allocator,
+    socket_path: ?[]const u8 = null,
+    sock: ?std.net.Stream = null,
 
-    pub fn connect(c: *Connection) void {
-        _ = c;
+    pub fn init(a: Allocator) !Connection {
+        var c = Connection{ .alloc = a };
+        c.socket_path = try getSockPath(c.alloc);
+        c.sock = try std.net.connectUnixSocket(c.socket_path.?);
+        return c;
     }
 
-    pub fn loop(c: *Connection) void {
-        _ = c;
+    pub fn raze(c: *Connection) void {
+        if (c.socket_path) |path| c.alloc.free(path);
+        c.socket_path = null;
+        if (c.sock) |sock| sock.close();
+    }
+
+    pub fn subscribe(c: *Connection) !void {
+        var sock = c.sock orelse unreachable;
+        var w = sock.writer();
+        try Subscribe.send(&w);
+    }
+
+    pub fn loop(c: *Connection) !Message {
+        var sock = c.sock orelse unreachable;
+
+        var r = sock.reader();
+        return try Message.read(c.alloc, &r);
     }
 };
+
+test "sway get socketpath" {
+    const a = std.testing.allocator;
+    var child = std.ChildProcess.init(&[_][]const u8{ "sway", "--get-socketpath" }, a);
+    child.stdout_behavior = .Pipe;
+    child.stderr_behavior = .Pipe;
+
+    var stdout = std.ArrayList(u8).init(a);
+    defer stdout.clearAndFree();
+    var stderr = std.ArrayList(u8).init(a);
+    defer stdout.clearAndFree();
+
+    try child.spawn();
+    try child.collectOutput(&stdout, &stderr, 0xff);
+    const out = try child.wait();
+    _ = out;
+    std.debug.print("sway socket path {s}\n", .{stdout.items});
+}
+
+test "sending" {
+    var buf: [0xff]u8 = undefined;
+
+    var fbs = std.io.fixedBufferStream(&buf);
+    var w = fbs.writer();
+
+    const m = Subscribe;
+
+    try w.writeStruct(m.header);
+    try w.writeAll(m.data);
+
+    std.debug.print("struct {any}\n", .{buf});
+}
