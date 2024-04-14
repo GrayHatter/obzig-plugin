@@ -52,8 +52,9 @@ fn log(text: [*:0]const u8) void {
 
 var arena: std.heap.ArenaAllocator = undefined;
 var alloc: Allocator = undefined;
+var running = true;
 
-fn thread(_: ?*anyopaque) void {
+fn watchSway(_: ?*anyopaque) void {
     obs.blog(obs.LOG_INFO, "sway thread running");
     var sway = sway_ipc.Connection.init(alloc) catch |err| {
         logFmt("connection error {}", .{err});
@@ -64,26 +65,32 @@ fn thread(_: ?*anyopaque) void {
         unreachable;
     };
     std.time.sleep(10_000_000_000);
-    for (0..10) |_| {
+    gui.OBSScene.findScenes();
+    while (running) {
         const msg = sway.loop() catch {
             log("unexpected read error");
             unreachable;
         };
 
-        if (gui.currentScene()) |name| {
-            logFmt("name {s}\n", .{name});
-        }
-        std.time.sleep(10_000_000);
+        std.time.sleep(100_000_000);
         switch (msg.toStruct(alloc) catch {
             log("unable to build struct");
             continue;
         }) {
-            .window => |w| logFmt("marks {s}", .{w.container.marks}),
+            .window => |w| {
+                for (w.container.marks) |mark| {
+                    if (std.mem.eql(u8, mark, "build")) {
+                        //std.debug.print("found {}\n", .{w.container});
+                        gui.OBSScene.requestBuild();
+                        break;
+                    }
+                } else {
+                    gui.OBSScene.requestCode();
+                }
+            },
         }
     }
-    for (gui.getSceneNames()) |name| {
-        logFmt("scene name: {s}", .{std.mem.span(name.?)});
-    }
+    log("sway-focus thread exit");
 }
 
 var threads: [1]std.Thread = undefined;
@@ -91,34 +98,18 @@ var threads: [1]std.Thread = undefined;
 export fn obs_module_load() bool {
     arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     alloc = arena.allocator();
-    threads[0] = std.Thread.spawn(.{}, thread, .{null}) catch unreachable;
+    threads[0] = std.Thread.spawn(.{}, watchSway, .{null}) catch unreachable;
 
-    enumScene();
     logFmt("sway-focus plugin loaded successfully {s}", .{PLUGIN_VERSION});
+
     return true;
 }
 
 export fn obs_module_unload() void {
+    log("sway-focus plugin shutdown");
+    running = false;
     std.Thread.join(threads[0]);
     arena.deinit();
 }
-
-fn enumScene() void {
-    obs.obs_enum_scenes(enumSceneCb, null);
-}
-
-fn enumSceneCb(_: ?*anyopaque, _: ?*obs.obs_source_t) callconv(.C) bool {
-    //const char: [*:0]u8 = scene.?.get_name(data);
-
-    //obs.blog(obs.LOG_INFO, "plugin data (found scene %s)", char);
-    return true;
-}
-
-fn enumSceneItemCb(_: ?*obs.obs_scene_t, _: ?*obs.obs_sceneitem_t, _: ?*void) callconv(.C) void {}
-
-// TODO
-// get windows
-// trigger scene on event
-// stall on remove for min seconds
 
 test "basic add functionality" {}
