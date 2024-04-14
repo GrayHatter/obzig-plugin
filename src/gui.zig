@@ -57,14 +57,14 @@ pub const OBSScene = struct {
     }
 
     pub fn requestBuild() void {
-        std.debug.print("request build\n", .{});
+        //std.debug.print("request build\n", .{});
         if (!on_build) swapPreview();
         on_build = true;
         last = std.time.milliTimestamp();
     }
 
     pub fn requestCode() void {
-        std.debug.print("request code\n", .{});
+        //std.debug.print("request code\n", .{});
         if (last < std.time.milliTimestamp() - 1500 and on_build) {
             swapPreview();
         }
@@ -73,7 +73,7 @@ pub const OBSScene = struct {
     }
 
     pub fn swapPreview() void {
-        std.debug.print("swaping\n", .{});
+        //std.debug.print("swaping\n", .{});
         obs_frontend_preview_program_trigger_transition();
     }
 
