@@ -1,13 +1,15 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
+pub const SwayMessages = @import("sway-messages.zig");
+
 pub const Payload = enum(u32) {
     RUN_COMMAND = 0, // Runs the payload as sway commands
     GET_WORKSPACES = 1, // Get the list of current workspaces
     SUBSCRIBE = 2, // Subscribe the IPC connection to the events listed in the payload
     GET_OUTPUTS = 3, // Get the list of current outputs
     GET_TREE = 4, // Get the node layout tree
-    GET_MARKS = 5, // Get the names of all the marks currently set
+    GET_MARKS = 5, // Get the names of all athe marks currently set
     GET_BAR_CONFIG = 6, // Get the specified bar config or a list of bar config names
     GET_VERSION = 7, // Get the version of sway that owns the IPC socket
     GET_BINDING_MODES = 8, // Get the list of binding mode names
@@ -26,10 +28,10 @@ pub const Payload = enum(u32) {
 
 const Subscribe = Message{
     .header = .{
-        .length = 13,
+        .length = 10,
         .payload_type = .SUBSCRIBE,
     },
-    .data = "[\"workspace\"]",
+    .data = "[\"window\"]",
 };
 
 pub const Message = struct {
@@ -144,8 +146,33 @@ test "sending" {
 
     const m = Subscribe;
 
-    try w.writeStruct(m.header);
+    try w.writeAll(m.header.magic);
+    try w.writeInt(u32, m.header.length, .little);
+    try w.writeInt(u32, @intFromEnum(m.header.payload_type), .little);
     try w.writeAll(m.data);
+}
 
-    std.debug.print("struct {any}\n", .{buf});
+test "waiting" {
+    const a = std.testing.allocator;
+
+    var sway = try Connection.init(a);
+    defer sway.raze();
+    try sway.subscribe();
+    std.time.sleep(1_000_000_000);
+    for (0..10) |_| {
+        const msg = try sway.loop();
+        defer msg.raze(a);
+        std.time.sleep(10_000_000);
+        const thing = std.json.parseFromSlice(
+            SwayMessages.WindowChange,
+            a,
+            msg.data,
+            .{ .ignore_unknown_fields = true },
+        ) catch |err| {
+            std.debug.print("error {}\n", .{err});
+            std.debug.print("msg {s}\n", .{msg.data});
+            continue;
+        };
+        defer thing.deinit();
+    }
 }
