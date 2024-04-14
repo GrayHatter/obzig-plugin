@@ -69,6 +69,14 @@ pub const Message = struct {
         try w.writeInt(u32, @intFromEnum(m.header.payload_type), .little);
         try w.writeAll(m.data);
     }
+
+    /// Leaks if you don't use an gc'd allocator
+    pub fn toStruct(m: Message, a: Allocator) !SwayMessages.MsgKind {
+        const thing = try std.json.parseFromSlice(SwayMessages.WindowChange, a, m.data, .{ .ignore_unknown_fields = true });
+        return .{
+            .window = thing.value,
+        };
+    }
 };
 
 pub fn getSockPath(a: Allocator) ![]const u8 {
@@ -173,6 +181,11 @@ test "waiting" {
             std.debug.print("msg {s}\n", .{msg.data});
             continue;
         };
+        //std.debug.print("value {}\n", .{thing.value});
+        //std.debug.print("marks {s}\n", .{thing.value.container.marks});
+        if (thing.value.container.marks.len > 0) {
+            try std.testing.expectEqualStrings("test", thing.value.container.marks[0]);
+        }
         defer thing.deinit();
     }
 }

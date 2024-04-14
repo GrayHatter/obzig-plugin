@@ -69,10 +69,20 @@ fn thread(_: ?*anyopaque) void {
             log("unexpected read error");
             unreachable;
         };
-        const text = alloc.dupeZ(u8, msg.data) catch unreachable;
-        defer alloc.free(text);
-        log(text);
+
+        if (gui.currentScene()) |name| {
+            logFmt("name {s}\n", .{name});
+        }
         std.time.sleep(10_000_000);
+        switch (msg.toStruct(alloc) catch {
+            log("unable to build struct");
+            continue;
+        }) {
+            .window => |w| logFmt("marks {s}", .{w.container.marks}),
+        }
+    }
+    for (gui.getSceneNames()) |name| {
+        logFmt("scene name: {s}", .{std.mem.span(name.?)});
     }
 }
 
