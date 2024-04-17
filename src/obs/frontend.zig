@@ -12,6 +12,8 @@ extern "obs-frontend-api" fn obs_frontend_get_scene_names() callconv(.C) [*:null
 extern "obs-frontend-api" fn obs_frontend_get_scenes(?*obs_frontend_source_list) callconv(.C) void;
 extern "obs-frontend-api" fn obs_frontend_preview_program_trigger_transition() callconv(.C) void;
 //extern "obs-frontend-api" fn obs_frontend_source_list_free(?*obs_frontend_source_list) callconv(.C) void;
+extern "obs-frontend-api" fn obs_frontend_add_dock(?*anyopaque) callconv(.C) void;
+extern "obs-frontend-api" fn obs_frontend_get_main_window() callconv(.C) ?*anyopaque;
 
 const obs_frontend_cb = *const fn (?*anyopaque) callconv(.C) void;
 
@@ -70,5 +72,15 @@ pub const OBSScene = struct {
 
     pub fn getSceneNames() [:null]?[*c]const u8 {
         return std.mem.span(obs_frontend_get_scene_names());
+    }
+};
+
+extern "qt_shim" fn createDock(?*anyopaque) callconv(.C) ?*anyopaque;
+
+pub const QtShim = struct {
+    pub fn newDock() void {
+        const qtwin = obs_frontend_get_main_window();
+        const dock = createDock(qtwin);
+        obs_frontend_add_dock(dock);
     }
 };

@@ -12,6 +12,7 @@ pub const OBS = @cImport({
 });
 
 pub const Scene = @import("obs/frontend.zig").OBSScene;
+pub const QtShim = @import("obs/frontend.zig").QtShim;
 
 /// Define a module_defaults in you root project file
 const module_defaults: ModuleDefaults = if (@hasDecl(root, "module_defaults")) root.module_defaults else .{};

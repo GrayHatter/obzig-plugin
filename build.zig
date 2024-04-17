@@ -7,12 +7,29 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    const shim = b.addStaticLibrary(.{
+        .name = "qt_shim",
+        .target = target,
+        .optimize = optimize,
+    });
+    shim.linkLibCpp();
+    shim.addCSourceFile(.{
+        .file = .{ .path = "src/cpp/qtdockwidget.cpp" },
+        .flags = &.{
+            "-I",
+            "/usr/include/qt6/",
+            "-I",
+            "/usr/include/qt6/QtWidgets/",
+        },
+    });
+
     const lib = b.addSharedLibrary(.{
         .name = "obs-sway-focus",
         .root_source_file = .{ .path = "src/root.zig" },
         .target = target,
         .optimize = optimize,
     });
+    lib.linkLibrary(shim);
     lib.linkLibC();
     // b.installArtifact(lib);
     b.getInstallStep().dependOn(

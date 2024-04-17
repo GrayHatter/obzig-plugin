@@ -86,6 +86,7 @@ fn on_load() bool {
     alloc = arena.allocator();
     threads[0] = std.Thread.spawn(.{}, watchSway, .{null}) catch unreachable;
 
+    obs.QtShim.newDock();
     return true;
 }
 
