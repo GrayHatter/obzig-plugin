@@ -6,6 +6,8 @@
 
 QDockWidget* ZigQt::createDock(QWidget *parent) {
     QDockWidget *dock = new QDockWidget(tr("Sway-Focus"), parent);
+    dock->setObjectName("Sway-Focus");
+
     return dock;
 }
 
