@@ -1,8 +1,7 @@
 const std = @import("std");
+const plugin_config = @import("src/root.zig").module_defaults;
+const name = plugin_config.name;
 
-// Although this function looks imperative, note that its job is to
-// declaratively construct a build graph that will be executed by an external
-// runner.
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
@@ -24,18 +23,19 @@ pub fn build(b: *std.Build) void {
     });
 
     const lib = b.addSharedLibrary(.{
-        .name = "obs-sway-focus",
-        .root_source_file = .{ .path = "src/root.zig" },
+        .name = name,
+        .root_source_file = .{
+            .path = "src/root.zig",
+        },
         .target = target,
         .optimize = optimize,
     });
     lib.linkLibrary(shim);
     lib.linkLibC();
-    // b.installArtifact(lib);
     b.getInstallStep().dependOn(
         &b.addInstallArtifact(lib, .{
             .dest_dir = .{ .override = std.Build.InstallDir{ .custom = "" } },
-            .dest_sub_path = "obs-sway-focus/bin/64bit/obs-sway-focus.so",
+            .dest_sub_path = name ++ "/bin/64bit/" ++ name ++ ".so",
         }).step,
     );
 

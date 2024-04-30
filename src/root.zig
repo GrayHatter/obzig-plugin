@@ -1,14 +1,13 @@
 /// Example root.zig file used to compile the Zig OBS plugin
-///
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 const obs = @import("obs.zig");
 
-pub const module_defaults: obs.ModuleDefaults = .{
+pub const module_defaults = .{
     .name = "Really-Cool-Zig-Plugin",
     .version = "0.0.0",
     .author = "grayhatter",
-    .description = "This is the description of your dope plugin",
+    .description = "This is the description of your new dope plugin",
 
     .on_load_fn = on_load,
     .on_unload_fn = on_unload,
@@ -17,7 +16,9 @@ pub const module_defaults: obs.ModuleDefaults = .{
 // exportOBS must be called at comptime otherwise zig will prune the minimal
 // set of functions required when the plugin is loaded by OBS.
 comptime {
-    obs.exportOBS();
+    if (@This() == @import("root")) {
+        obs.exportOBS();
+    }
 }
 
 var arena: std.heap.ArenaAllocator = undefined;
