@@ -1,99 +1,44 @@
+/// Example root.zig file used to compile the Zig OBS plugin
+///
 const std = @import("std");
 const Allocator = std.mem.Allocator;
-
-const sway_ipc = @import("sway-ipc.zig");
 const obs = @import("obs.zig");
 
 pub const module_defaults: obs.ModuleDefaults = .{
-    .name = "obs-sway-focus",
-    .version = "0.0.1",
+    .name = "Really-Cool-Zig-Plugin",
+    .version = "0.0.0",
     .author = "grayhatter",
-    .description = "tracks focus of sway windows",
+    .description = "This is the description of your dope plugin",
 
     .on_load_fn = on_load,
     .on_unload_fn = on_unload,
 };
 
+// exportOBS must be called at comptime otherwise zig will prune the minimal
+// set of functions required when the plugin is loaded by OBS.
 comptime {
     obs.exportOBS();
 }
 
 var arena: std.heap.ArenaAllocator = undefined;
 var alloc: Allocator = undefined;
-var running = true;
-var threads: [1]std.Thread = undefined;
 
-var last: i64 = 0;
-var on_build = false;
-
-fn requestBuild() void {
-    //std.debug.print("request build\n", .{});
-    if (!on_build) obs.Scene.swapPreview();
-    on_build = true;
-    last = std.time.milliTimestamp();
-}
-
-fn requestCode() void {
-    //std.debug.print("request code\n", .{});
-    if (last < std.time.milliTimestamp() - 1500 and on_build) {
-        obs.Scene.swapPreview();
-    }
-    on_build = false;
-    last = std.time.milliTimestamp();
-}
-
-fn watchSway(_: ?*anyopaque) void {
-    obs.log("sway thread running");
-    var sway = sway_ipc.Connection.init(alloc) catch |err| {
-        obs.logFmt("connection error {}", .{err});
-        return;
-    };
-    sway.subscribe() catch {
-        obs.log("crash trying to subscribe");
-        unreachable;
-    };
-    std.time.sleep(10_000_000_000);
-    obs.Scene.findScenes();
-    while (running) {
-        const msg = sway.loop() catch {
-            obs.log("unexpected read error");
-            unreachable;
-        };
-
-        std.time.sleep(100_000_000);
-        switch (msg.toStruct(alloc) catch {
-            obs.log("unable to build struct");
-            continue;
-        }) {
-            .window => |w| {
-                for (w.container.marks) |mark| {
-                    if (std.mem.eql(u8, mark, "build")) {
-                        //std.debug.print("found {}\n", .{w.container});
-                        requestBuild();
-                        break;
-                    }
-                } else {
-                    requestCode();
-                }
-            },
-        }
-    }
-    obs.log("sway-focus thread exit");
-}
-
+/// This function will be called by OBS when the plugin is loaded
+/// Use it to set up the state you need.
 fn on_load() bool {
     arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     alloc = arena.allocator();
-    threads[0] = std.Thread.spawn(.{}, watchSway, .{null}) catch unreachable;
-
-    obs.QtShim.newDock();
+    // Because plugins are normally not in direct control of the timing
+    // the exepected defer arena.deinit() is moved into on_unload()
     return true;
 }
 
+/// This function is called by OBS when it closes, or when something causes this
+/// module to be unloaded.
 fn on_unload() void {
-    running = false;
-    std.Thread.join(threads[0]);
+    // This is the arena allocator created in on_load().
+    // calling arena.deinit() if arena is the comptime `undefined` would invoke
+    // undefined behavior. If this isn't acceptable, changing the arena to a
+    // nullable type would resolve UB here.
     arena.deinit();
 }
-
-test "basic add functionality" {}
