@@ -1,6 +1,6 @@
 const std = @import("std");
-const plugin_config = @import("src/root.zig").module_defaults;
-const name = plugin_config.name;
+const project_name = @import("src/root.zig").module_defaults.name;
+const name = project_name;
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
@@ -22,8 +22,18 @@ pub fn build(b: *std.Build) void {
         },
     });
 
+    const module = b.addModule("OBS", .{
+        .root_source_file = .{
+            .path = "src/root.zig",
+        },
+        .target = target,
+        .optimize = optimize,
+    });
+    module.linkLibrary(shim);
+    //module.linkLibC();
+
     const lib = b.addSharedLibrary(.{
-        .name = name,
+        .name = "obzig-plugin",
         .root_source_file = .{
             .path = "src/root.zig",
         },

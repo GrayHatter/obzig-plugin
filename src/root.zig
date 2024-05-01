@@ -2,8 +2,18 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 const obs = @import("obs.zig");
+//pub usingnamespace obs;
+pub const ModuleInfo = @import("module-info.zig");
 
-pub const module_defaults = .{
+pub const logFmt = obs.logFmt;
+pub const log = obs.log;
+pub const Scene = @import("obs/frontend.zig").OBSScene;
+pub const QtShim = @import("obs/frontend.zig").QtShim;
+pub fn includeExports() void {
+    return obs.exportOBS();
+}
+
+pub const module_defaults: ModuleInfo = .{
     .name = "Really-Cool-Zig-Plugin",
     .version = "0.0.0",
     .author = "grayhatter",
