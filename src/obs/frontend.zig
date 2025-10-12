@@ -7,15 +7,15 @@ extern "obs-frontend-api" fn obs_frontend_add_tools_menu_item(
     ?*anyopaque,
 ) void;
 extern "obs-frontend-api" fn obs_frontend_get_current_scene() ?*OBS.obs_source_t;
-extern "obs-frontend-api" fn obs_frontend_set_current_scene(*OBS.obs_source_t) callconv(.C) void;
-extern "obs-frontend-api" fn obs_frontend_get_scene_names() callconv(.C) [*:null]?[*c]u8;
-extern "obs-frontend-api" fn obs_frontend_get_scenes(?*obs_frontend_source_list) callconv(.C) void;
-extern "obs-frontend-api" fn obs_frontend_preview_program_trigger_transition() callconv(.C) void;
-//extern "obs-frontend-api" fn obs_frontend_source_list_free(?*obs_frontend_source_list) callconv(.C) void;
-extern "obs-frontend-api" fn obs_frontend_add_custom_qdock([*c]const u8, ?*anyopaque) callconv(.C) bool;
-extern "obs-frontend-api" fn obs_frontend_get_main_window() callconv(.C) ?*anyopaque;
+extern "obs-frontend-api" fn obs_frontend_set_current_scene(*OBS.obs_source_t) callconv(.c) void;
+extern "obs-frontend-api" fn obs_frontend_get_scene_names() callconv(.c) [*:null]?[*c]u8;
+extern "obs-frontend-api" fn obs_frontend_get_scenes(?*obs_frontend_source_list) callconv(.c) void;
+extern "obs-frontend-api" fn obs_frontend_preview_program_trigger_transition() callconv(.c) void;
+//extern "obs-frontend-api" fn obs_frontend_source_list_free(?*obs_frontend_source_list) callconv(.c) void;
+extern "obs-frontend-api" fn obs_frontend_add_custom_qdock([*c]const u8, ?*anyopaque) callconv(.c) bool;
+extern "obs-frontend-api" fn obs_frontend_get_main_window() callconv(.c) ?*anyopaque;
 
-const obs_frontend_cb = *const fn (?*anyopaque) callconv(.C) void;
+const obs_frontend_cb = *const fn (?*anyopaque) callconv(.c) void;
 
 const obs_src_array = extern struct {
     array: [*]?*OBS.obs_source_t,
@@ -75,7 +75,7 @@ pub const OBSScene = struct {
     }
 };
 
-extern "qt_shim" fn createDock(?*anyopaque) callconv(.C) ?*anyopaque;
+extern "qt_shim" fn createDock(?*anyopaque) callconv(.c) ?*anyopaque;
 
 pub const QtShim = struct {
     pub fn newDock(name: [:0]const u8) bool {
