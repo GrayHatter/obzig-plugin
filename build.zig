@@ -6,6 +6,14 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    const moc_path = b.option(
+        []const u8,
+        "moc_path",
+        "system path of the meta object compiler for Qt",
+    ) orelse "/usr/lib/qt6/moc";
+
+    updateQtMoc(b, moc_path);
+
     const shim = b.addLibrary(.{
         .name = "qt_shim",
         .linkage = .static,
@@ -52,4 +60,17 @@ pub fn build(b: *std.Build) void {
 
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_lib_unit_tests.step);
+}
+
+fn updateQtMoc(b: *std.Build, moc_path: []const u8) void {
+    const moc_run = b.addSystemCommand(&.{moc_path});
+    moc_run.addFileArg(b.path("src/cpp/qtdockwidget.h"));
+    moc_run.addArgs(&.{ "-p", "." });
+    const stdout = moc_run.captureStdOut();
+
+    const wf = b.addUpdateSourceFiles();
+    wf.addCopyFileToSource(stdout, "src/cpp/qtdockwidget.moc");
+
+    const update_protocol_step = b.step("regen-moc", "update src/protocol.zig to latest");
+    update_protocol_step.dependOn(&wf.step);
 }

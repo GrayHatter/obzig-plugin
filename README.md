@@ -10,10 +10,9 @@ Installing can be done directly by Zig build with
 Otherwise you'll need to copy the artifacts from the zig-out/ directory.
 
 
-# Building / Extending
-you may have to manually run 
-`/usr/lib/qt6/moc src/cpp/qtdockwidget.h -o src/cpp/qtdockwidget.moc`
-if you're updating the QTDock helper.
+# Building / Extending 
+`src/cpp/qtdockwidget.moc` can be regenerated with `zig build regen-moc`.
+Use `-Dmoc_path [path]` to specify a different moc binary location
 
 ### TODO
- - [ ] add moc generation to build.zig
+ - [x] add moc generation to build.zig
