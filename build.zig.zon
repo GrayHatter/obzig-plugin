@@ -1,9 +1,9 @@
 .{
-    .name = "obs",
+    .name = .obzig,
     .version = "0.0.0",
-    //.minimum_zig_version = "0.11.0",
-    .dependencies = .{ },
-
+    .minimum_zig_version = "0.15.1",
+    .dependencies = .{},
+    .fingerprint = 0x72e0e19afea65a2e,
     .paths = .{
         "build.zig",
         "build.zig.zon",

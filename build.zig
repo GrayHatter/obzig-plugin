@@ -6,39 +6,35 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const shim = b.addStaticLibrary(.{
+    const shim = b.addLibrary(.{
         .name = "qt_shim",
-        .target = target,
-        .optimize = optimize,
+        .linkage = .static,
+        .root_module = b.createModule(.{
+            .target = target,
+            .optimize = optimize,
+        }),
     });
     shim.linkLibCpp();
     shim.addCSourceFile(.{
-        .file = .{ .path = "src/cpp/qtdockwidget.cpp" },
+        .file = b.path("src/cpp/qtdockwidget.cpp"),
         .flags = &.{
-            "-I",
-            "/usr/include/qt6/",
-            "-I",
-            "/usr/include/qt6/QtWidgets/",
+            "-I", "/usr/include/qt6/",
+            "-I", "/usr/include/qt6/QtWidgets/",
         },
     });
 
     const module = b.addModule("OBS", .{
-        .root_source_file = .{
-            .path = "src/root.zig",
-        },
+        .root_source_file = b.path("src/root.zig"),
         .target = target,
         .optimize = optimize,
     });
     module.linkLibrary(shim);
     //module.linkLibC();
 
-    const lib = b.addSharedLibrary(.{
+    const lib = b.addLibrary(.{
         .name = "obzig-plugin",
-        .root_source_file = .{
-            .path = "src/root.zig",
-        },
-        .target = target,
-        .optimize = optimize,
+        .linkage = .dynamic,
+        .root_module = module,
     });
     lib.linkLibrary(shim);
     lib.linkLibC();
@@ -49,11 +45,7 @@ pub fn build(b: *std.Build) void {
         }).step,
     );
 
-    const lib_unit_tests = b.addTest(.{
-        .root_source_file = .{ .path = "src/root.zig" },
-        .target = target,
-        .optimize = optimize,
-    });
+    const lib_unit_tests = b.addTest(.{ .root_module = module });
     lib_unit_tests.linkLibC();
 
     const run_lib_unit_tests = b.addRunArtifact(lib_unit_tests);
