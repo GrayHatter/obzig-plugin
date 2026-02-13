@@ -1,14 +1,17 @@
 .{
     .name = .obzig,
     .version = "0.0.0",
-    .minimum_zig_version = "0.15.1",
-    .dependencies = .{},
+    .minimum_zig_version = "0.16.0-dev.2535+b5bd49460",
+    .dependencies = .{
+        .translate_c = .{
+            .url = "git+https://codeberg.org/ziglang/translate-c#d2be2f19ef7c9caa1561d38c96581ac79dd4c654",
+            .hash = "translate_c-0.0.0-Q_BUWmzfBgDpDBF7fotbAH17b1W8SUO48VCbXxmdy0xW",
+        },
+    },
     .fingerprint = 0x72e0e19afea65a2e,
     .paths = .{
         "build.zig",
         "build.zig.zon",
         "src",
-        "README.md",
-        //"LICENSE",
     },
 }

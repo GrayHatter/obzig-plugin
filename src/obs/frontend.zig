@@ -15,6 +15,8 @@ extern "obs-frontend-api" fn obs_frontend_preview_program_trigger_transition() c
 extern "obs-frontend-api" fn obs_frontend_add_custom_qdock([*c]const u8, ?*anyopaque) callconv(.c) bool;
 extern "obs-frontend-api" fn obs_frontend_get_main_window() callconv(.c) ?*anyopaque;
 
+extern "obs" fn obs_source_get_name(?*OBS.obs_source_t) callconv(.c) [*:0]u8;
+
 const obs_frontend_cb = *const fn (?*anyopaque) callconv(.c) void;
 
 const obs_src_array = extern struct {
@@ -43,7 +45,7 @@ pub const OBSScene = struct {
         const array: [*]?*OBS.obs_source_t = @ptrCast(scenes.sources.src.array);
         for (array[0..scenes.sources.src.num]) |src| {
             //const scene: ?*OBS.obs_scene_t = OBS.obs_scene_from_source(src);
-            const name: [*c]const u8 = OBS.obs_source_get_name(src);
+            const name: [*c]const u8 = obs_source_get_name(src);
             //const uuid: [*c]const u8 = OBS.obs_source_get_uuid(@ptrCast(scene));
             std.debug.print("scene {s} \n", .{name});
         }

@@ -14,16 +14,36 @@ pub fn build(b: *std.Build) void {
 
     updateQtMoc(b, moc_path);
 
+    //const Translator = @import("translate_c").Translator;
+    //const translate_c = b.dependency("translate_c", .{});
+    //const t: Translator = .init(translate_c, .{
+    //    .c_source_file = b.path("to_translate.h"),
+    //    .target = target,
+    //    .optimize = optimize,
+    //});
+    //const obs_c = b.addTranslateC(.{
+    //    .root_source_file = .{ .cwd_relative = "/usr/include/obs/obs-module.h" },
+    //    .target = target,
+    //    .optimize = optimize,
+    //});
+    //obs_c.use_clang = true;
+    //const obs_mod = obs_c.addModule("OBS_C");
+    //b.modules.put(b.dupe("OBS_C"), obs_mod) catch @panic("OOM");
+    //_ = obs_mod;
+
     const shim = b.addLibrary(.{
         .name = "qt_shim",
         .linkage = .static,
         .root_module = b.createModule(.{
             .target = target,
             .optimize = optimize,
+            .link_libc = true,
+            .link_libcpp = true,
         }),
+        .use_llvm = true,
+        .use_lld = true,
     });
-    shim.linkLibCpp();
-    shim.addCSourceFile(.{
+    shim.root_module.addCSourceFile(.{
         .file = b.path("src/cpp/qtdockwidget.cpp"),
         .flags = &.{
             "-I", "/usr/include/qt6/",
@@ -35,17 +55,19 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("src/root.zig"),
         .target = target,
         .optimize = optimize,
+        //.link_libc = true,
+        //.link_libcpp = true,
     });
+
+    //module.addImport("obs_tr", obs_mod);
+
     module.linkLibrary(shim);
-    //module.linkLibC();
 
     const lib = b.addLibrary(.{
         .name = "obzig-plugin",
         .linkage = .dynamic,
         .root_module = module,
     });
-    lib.linkLibrary(shim);
-    lib.linkLibC();
     b.getInstallStep().dependOn(
         &b.addInstallArtifact(lib, .{
             .dest_dir = .{ .override = std.Build.InstallDir{ .custom = "" } },
@@ -54,7 +76,6 @@ pub fn build(b: *std.Build) void {
     );
 
     const lib_unit_tests = b.addTest(.{ .root_module = module });
-    lib_unit_tests.linkLibC();
 
     const run_lib_unit_tests = b.addRunArtifact(lib_unit_tests);
 
@@ -66,7 +87,7 @@ fn updateQtMoc(b: *std.Build, moc_path: []const u8) void {
     const moc_run = b.addSystemCommand(&.{moc_path});
     moc_run.addFileArg(b.path("src/cpp/qtdockwidget.h"));
     moc_run.addArgs(&.{ "-p", "." });
-    const stdout = moc_run.captureStdOut();
+    const stdout = moc_run.captureStdOut(.{});
 
     const wf = b.addUpdateSourceFiles();
     wf.addCopyFileToSource(stdout, "src/cpp/qtdockwidget.moc");
