@@ -1,7 +1,7 @@
 .{
     .name = .obzig,
-    .version = "0.0.0",
-    .minimum_zig_version = "0.16.0-dev.2535+b5bd49460",
+    .version = "0.0.1",
+    .minimum_zig_version = "0.16.0",
     .dependencies = .{
         .translate_c = .{
             .url = "git+https://codeberg.org/ziglang/translate-c#d2be2f19ef7c9caa1561d38c96581ac79dd4c654",
